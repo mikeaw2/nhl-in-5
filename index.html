@@ -435,7 +435,6 @@ async function loadDashboard() {
     (data.standings || []).forEach(team => {
 
       teamNames[team.abbrev] =
-        team.location ||
         team.name ||
         team.abbrev;
 
@@ -579,7 +578,7 @@ function renderGames(games) {
       <div class="score-line">
 
         <span class="${awayClass}">
-          ${game.away.location}
+          ${game.away.name}
           ${game.away.score}
         </span>
 
@@ -588,7 +587,7 @@ function renderGames(games) {
         </span>
 
         <span class="${homeClass}">
-          ${game.home.location}
+          ${game.home.name}
           ${game.home.score}
         </span>
 
@@ -874,7 +873,7 @@ function standingRowHTML(
       </div>
 
       <div class="team">
-        ${team.abbrev}
+        ${team.name}
       </div>
 
       <div class="record">
@@ -964,9 +963,9 @@ function renderUpcoming(games) {
 
       <div class="upcoming-matchup">
 
-        ${game.awayLocation}
+        ${game.awayName}
         @
-        ${game.homeLocation}
+        ${game.homeName}
 
       </div>
 
