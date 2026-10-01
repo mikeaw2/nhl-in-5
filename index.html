@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
   <title>NHL in 5</title>
 
@@ -15,6 +18,7 @@
       margin: 0;
       background: #08111f;
       color: #f8fafc;
+
       font-family:
         -apple-system,
         BlinkMacSystemFont,
@@ -50,10 +54,54 @@
       margin-bottom: 18px;
     }
 
+    .section-note {
+      color: #64748b;
+      font-size: 13px;
+      margin: -10px 0 17px;
+    }
+
     .panel {
       background: #121d30;
       border-radius: 18px;
       padding: 22px;
+    }
+
+    /* -------------------------
+       TONIGHT / LIVE
+    -------------------------- */
+
+    .today-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .today-card {
+      background: #0c1627;
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .today-card.live {
+      border:
+        1px solid rgba(74, 222, 128, .35);
+    }
+
+    .today-matchup {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .today-status {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .live-label {
+      color: #4ade80;
+      font-weight: 800;
     }
 
     /* -------------------------
@@ -76,9 +124,11 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
+
       font-size: 29px;
       font-weight: 800;
       letter-spacing: -0.6px;
+
       margin-bottom: 13px;
     }
 
@@ -125,10 +175,14 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+
       background: #121f33;
       color: #cbd5e1;
+
       padding: 7px 10px;
+
       border-radius: 999px;
+
       font-size: 14px;
     }
 
@@ -177,6 +231,7 @@
 
     .standing-header {
       display: grid;
+
       grid-template-columns:
         28px
         1fr
@@ -185,8 +240,11 @@
         48px;
 
       align-items: center;
+
       padding: 0 0 7px;
+
       color: #64748b;
+
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.8px;
@@ -198,6 +256,7 @@
 
     .standing-row {
       display: grid;
+
       grid-template-columns:
         28px
         1fr
@@ -206,9 +265,12 @@
         48px;
 
       align-items: center;
+
       padding: 8px 0;
+
       border-bottom:
         1px solid rgba(255,255,255,.06);
+
       font-size: 14px;
     }
 
@@ -258,8 +320,10 @@
 
     .upcoming-grid {
       display: grid;
+
       grid-template-columns:
         repeat(auto-fit, minmax(210px, 1fr));
+
       gap: 12px;
     }
 
@@ -343,6 +407,36 @@
     Everything you need to know in five minutes.
   </div>
 
+  <!-- TONIGHT / LIVE -->
+
+  <section>
+
+    <h2 class="section-title">
+      Tonight / Live
+    </h2>
+
+    <div class="section-note">
+      Today's NHL slate • updates when you refresh
+    </div>
+
+    <div class="panel">
+
+      <div
+        id="today-games"
+        class="today-grid"
+      >
+
+        <div class="loading">
+          Loading today's games...
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
   <!-- YESTERDAY -->
 
   <section>
@@ -354,14 +448,17 @@
     <div class="panel">
 
       <div id="games" class="games">
+
         <div class="loading">
           Loading yesterday's games...
         </div>
+
       </div>
 
     </div>
 
   </section>
+
 
   <!-- STANDINGS -->
 
@@ -380,6 +477,7 @@
     </div>
 
   </section>
+
 
   <!-- UPCOMING -->
 
@@ -408,6 +506,7 @@
 
 </div>
 
+
 <script>
 
 let teamNames = {};
@@ -427,19 +526,26 @@ async function loadDashboard() {
       );
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
 
     teamNames = {};
 
-    (data.standings || []).forEach(team => {
+    (data.standings || []).forEach(
+      team => {
 
-      teamNames[team.abbrev] =
-        team.name ||
-        team.abbrev;
+        teamNames[team.abbrev] =
+          team.name ||
+          team.abbrev;
 
-    });
+      }
+    );
 
+
+    renderTodayGames(
+      data.todayGames || []
+    );
 
     renderGames(
       data.games || []
@@ -453,9 +559,15 @@ async function loadDashboard() {
       data.upcoming || []
     );
 
+
   } catch (error) {
 
     console.error(error);
+
+    document.getElementById(
+      "today-games"
+    ).innerHTML =
+      '<div class="error">Could not load today\'s games.</div>';
 
     document.getElementById(
       "games"
@@ -477,13 +589,141 @@ async function loadDashboard() {
 
 
 /* --------------------------------
+   TODAY / LIVE
+-------------------------------- */
+
+function renderTodayGames(games) {
+
+  const container =
+    document.getElementById(
+      "today-games"
+    );
+
+  container.innerHTML = "";
+
+
+  if (!games.length) {
+
+    container.innerHTML =
+      "<div>No NHL games today.</div>";
+
+    return;
+  }
+
+
+  games.forEach(game => {
+
+    const card =
+      document.createElement(
+        "div"
+      );
+
+
+    const isLive =
+      game.gameState === "LIVE" ||
+      game.gameState === "CRIT";
+
+
+    card.className =
+      isLive
+        ? "today-card live"
+        : "today-card";
+
+
+    const hasScore =
+      game.away.score !== null &&
+      game.home.score !== null;
+
+
+    let matchup = "";
+
+    if (hasScore) {
+
+      matchup = `
+        ${game.away.name}
+        ${game.away.score}
+        —
+        ${game.home.name}
+        ${game.home.score}
+      `;
+
+    } else {
+
+      matchup = `
+        ${game.away.name}
+        @
+        ${game.home.name}
+      `;
+
+    }
+
+
+    let statusText =
+      game.status;
+
+
+    if (
+      game.gameState === "FUT" ||
+      game.gameState === "PRE"
+    ) {
+
+      const start =
+        new Date(
+          game.startTimeUTC
+        );
+
+      statusText =
+        start.toLocaleTimeString(
+          undefined,
+          {
+            hour: "numeric",
+            minute: "2-digit"
+          }
+        );
+
+    }
+
+
+    card.innerHTML = `
+
+      <div class="today-matchup">
+        ${matchup}
+      </div>
+
+      <div class="today-status">
+
+        ${
+          isLive
+            ? '<span class="live-label">● LIVE</span> • '
+            : ""
+        }
+
+        ${statusText}
+
+      </div>
+
+    `;
+
+
+    container.appendChild(
+      card
+    );
+
+  });
+
+}
+
+
+/* --------------------------------
    YESTERDAY
 -------------------------------- */
 
 function renderGames(games) {
 
   const container =
-    document.getElementById("games");
+    document.getElementById(
+      "games"
+    );
 
   container.innerHTML = "";
 
@@ -500,7 +740,9 @@ function renderGames(games) {
   games.forEach(game => {
 
     const card =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     card.className =
       "game-card";
@@ -528,21 +770,29 @@ function renderGames(games) {
 
     let gameType = "";
 
-    if (game.periodType === "OT") {
 
-      gameType =
-        `<span class="game-type">
+    if (
+      game.periodType === "OT"
+    ) {
+
+      gameType = `
+        <span class="game-type">
           OT
-        </span>`;
+        </span>
+      `;
 
     }
 
-    if (game.periodType === "SO") {
 
-      gameType =
-        `<span class="game-type">
+    if (
+      game.periodType === "SO"
+    ) {
+
+      gameType = `
+        <span class="game-type">
           SO
-        </span>`;
+        </span>
+      `;
 
     }
 
@@ -597,9 +847,7 @@ function renderGames(games) {
 
 
       <div class="performer">
-
         ${performerText}
-
       </div>
 
 
@@ -620,12 +868,13 @@ function renderGames(games) {
     `;
 
 
-    container.appendChild(card);
+    container.appendChild(
+      card
+    );
 
   });
 
 }
-
 
 
 function streakHTML(
@@ -660,16 +909,11 @@ function streakHTML(
   }
 
 
-  const emoji =
-    streak.emoji ||
-    "•";
-
-
   return `
 
     <span class="streak-pill">
 
-      ${emoji}
+      ${streak.emoji || "•"}
 
       <span class="streak-team">
         ${team}
@@ -688,7 +932,9 @@ function streakHTML(
    STANDINGS
 -------------------------------- */
 
-function renderStandings(standings) {
+function renderStandings(
+  standings
+) {
 
   const container =
     document.getElementById(
@@ -743,7 +989,6 @@ function renderStandings(standings) {
 }
 
 
-
 function conferenceHTML(
   conferenceName,
   teams,
@@ -772,7 +1017,7 @@ function conferenceHTML(
               divisionName
           )
           .sort(
-            (a,b) =>
+            (a, b) =>
               a.divisionRank -
               b.divisionRank
           );
@@ -787,11 +1032,23 @@ function conferenceHTML(
           </div>
 
           <div class="standing-header">
+
             <div>RK</div>
+
             <div>TEAM</div>
-            <div class="header-right">RECORD</div>
-            <div class="header-right">PTS</div>
-            <div class="header-right">MOVE</div>
+
+            <div class="header-right">
+              RECORD
+            </div>
+
+            <div class="header-right">
+              PTS
+            </div>
+
+            <div class="header-right">
+              MOVE
+            </div>
+
           </div>
 
       `;
@@ -824,9 +1081,7 @@ function conferenceHTML(
 
 
   return html;
-
 }
-
 
 
 function standingRowHTML(
@@ -856,7 +1111,9 @@ function standingRowHTML(
     movementHTML = `
 
       <span class="down">
-        ↓${Math.abs(team.movement)}
+        ↓${Math.abs(
+          team.movement
+        )}
       </span>
 
     `;
