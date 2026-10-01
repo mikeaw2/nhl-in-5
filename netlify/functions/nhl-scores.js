@@ -92,6 +92,32 @@ exports.handler = async function () {
 
           const allPlayers = [];
 
+          function getPlayerName(player) {
+            const first =
+              player.firstName?.default ||
+              player.firstName ||
+              "";
+
+            const last =
+              player.lastName?.default ||
+              player.lastName ||
+              "";
+
+            const fullName = `${first} ${last}`.trim();
+
+            if (fullName) return fullName;
+
+            if (player.name?.default) {
+              return player.name.default;
+            }
+
+            if (typeof player.name === "string") {
+              return player.name;
+            }
+
+            return "Unknown";
+          }
+
           function collectPlayers(teamStats, teamAbbrev) {
             if (!teamStats) return;
 
@@ -103,15 +129,10 @@ exports.handler = async function () {
             for (const player of groups) {
               const goals = player.goals ?? 0;
               const assists = player.assists ?? 0;
-              const points = player.points ?? goals + assists;
+              const points = player.points ?? (goals + assists);
 
               allPlayers.push({
-                name:
-                  player.name?.default ||
-                  player.name ||
-                  player.firstName?.default && player.lastName?.default
-                    ? `${player.firstName?.default || ""} ${player.lastName?.default || ""}`.trim()
-                    : "Unknown",
+                name: getPlayerName(player),
                 team: teamAbbrev,
                 goals,
                 assists,
@@ -131,8 +152,14 @@ exports.handler = async function () {
           );
 
           allPlayers.sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            if (b.goals !== a.goals) return b.goals - a.goals;
+            if (b.points !== a.points) {
+              return b.points - a.points;
+            }
+
+            if (b.goals !== a.goals) {
+              return b.goals - a.goals;
+            }
+
             return b.assists - a.assists;
           });
 
@@ -295,7 +322,6 @@ exports.handler = async function () {
         new Date(b.startTimeUTC)
     );
 
-    // Only show the next 8 scheduled games
     const nextGames = upcoming.slice(0, 8);
 
     return {
