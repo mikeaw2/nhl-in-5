@@ -61,10 +61,8 @@ exports.handler = async function () {
         team.teamAbbrev ||
         "";
 
-      previousRanks[abbrev] =
-        team.leagueSequence ??
-        team.conferenceSequence ??
-        null;
+    previousRanks[abbrev] =
+      team.divisionSequence ?? null;
     }
 
     // ----------------------------------------------------
@@ -241,10 +239,8 @@ exports.handler = async function () {
         team.teamAbbrev ||
         "";
 
-      const currentRank =
-        team.leagueSequence ??
-        team.conferenceSequence ??
-        null;
+    const currentRank =
+      team.divisionSequence ?? null;
 
       const oldRank = previousRanks[abbrev];
 
