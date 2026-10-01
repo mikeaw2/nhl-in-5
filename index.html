@@ -56,41 +56,93 @@
       padding: 22px;
     }
 
+
     /* -------------------------
        YESTERDAY
     -------------------------- */
 
     .games {
       display: grid;
-      gap: 14px;
+      gap: 15px;
     }
 
     .game-card {
       background: #0c1627;
-      border-radius: 14px;
-      padding: 20px;
+      border-radius: 15px;
+      padding: 22px 24px;
     }
 
     .score-line {
-      font-size: 27px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+
+      font-size: 29px;
       font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 12px;
+      letter-spacing: -0.6px;
+
+      margin-bottom: 13px;
+    }
+
+    .winner {
+      color: #ffffff;
+    }
+
+    .loser {
+      color: #b7c2d2;
+    }
+
+    .dash {
+      color: #64748b;
+    }
+
+    .game-type {
+      font-size: 12px;
+      color: #94a3b8;
+      background: #162238;
+      border-radius: 999px;
+      padding: 4px 8px;
+      letter-spacing: .4px;
+      font-weight: 700;
     }
 
     .performer {
       font-size: 16px;
-      margin-bottom: 9px;
       color: #e2e8f0;
+      margin-bottom: 14px;
+    }
+
+    .performer-name {
+      font-weight: 700;
+      color: #ffffff;
     }
 
     .streaks {
       display: flex;
-      gap: 18px;
+      gap: 9px;
       flex-wrap: wrap;
-      font-size: 15px;
-      color: #cbd5e1;
     }
+
+    .streak-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      background: #121f33;
+      color: #cbd5e1;
+
+      padding: 7px 10px;
+
+      border-radius: 999px;
+
+      font-size: 14px;
+    }
+
+    .streak-team {
+      font-weight: 650;
+    }
+
 
     /* -------------------------
        STANDINGS
@@ -190,6 +242,7 @@
       color: #64748b;
     }
 
+
     /* -------------------------
        UPCOMING
     -------------------------- */
@@ -224,7 +277,13 @@
       padding: 10px 0;
     }
 
+
+    /* -------------------------
+       MOBILE
+    -------------------------- */
+
     @media (max-width: 750px) {
+
       .container {
         padding-top: 28px;
       }
@@ -235,6 +294,10 @@
 
       .conferences {
         grid-template-columns: 1fr;
+      }
+
+      .score-line {
+        font-size: 25px;
       }
 
       .standing-row {
@@ -262,6 +325,7 @@
   <div class="subtitle">
     Everything you need to know in five minutes.
   </div>
+
 
   <!-- YESTERDAY -->
 
@@ -293,9 +357,11 @@
     </h2>
 
     <div id="standings">
+
       <div class="loading">
         Loading standings...
       </div>
+
     </div>
 
   </section>
@@ -315,9 +381,11 @@
         id="upcoming"
         class="upcoming-grid"
       >
+
         <div class="loading">
           Loading upcoming games...
         </div>
+
       </div>
 
     </div>
@@ -328,6 +396,9 @@
 
 
 <script>
+
+let teamNames = {};
+
 
 async function loadDashboard() {
 
@@ -345,7 +416,27 @@ async function loadDashboard() {
 
     const data = await response.json();
 
-    renderGames(data.games || []);
+
+    /*
+      Create a lookup so:
+      COL becomes Colorado
+      PIT becomes Pittsburgh
+      etc.
+    */
+
+    teamNames = {};
+
+    (data.standings || []).forEach(team => {
+
+      teamNames[team.abbrev] =
+        team.name || team.abbrev;
+
+    });
+
+
+    renderGames(
+      data.games || []
+    );
 
     renderStandings(
       data.standings || []
@@ -373,8 +464,10 @@ async function loadDashboard() {
       "upcoming"
     ).innerHTML =
       '<div class="error">Could not load upcoming games.</div>';
+
   }
 }
+
 
 
 /* --------------------------------
@@ -388,6 +481,7 @@ function renderGames(games) {
 
   container.innerHTML = "";
 
+
   if (!games.length) {
 
     container.innerHTML =
@@ -395,6 +489,7 @@ function renderGames(games) {
 
     return;
   }
+
 
   games.forEach(game => {
 
@@ -405,62 +500,119 @@ function renderGames(games) {
       "game-card";
 
 
-    let performerText =
-      "No player stats available.";
+    const awayWon =
+      game.away.score >
+      game.home.score;
 
-    if (game.topPerformer) {
+    const homeWon =
+      game.home.score >
+      game.away.score;
 
-      performerText =
-        `🏒 ${game.topPerformer.name} (${game.topPerformer.team}) — ` +
-        `${game.topPerformer.goals} G, ` +
-        `${game.topPerformer.assists} A`;
+
+    const awayClass =
+      awayWon
+        ? "winner"
+        : "loser";
+
+    const homeClass =
+      homeWon
+        ? "winner"
+        : "loser";
+
+
+    let gameType = "";
+
+    if (game.periodType === "OT") {
+
+      gameType =
+        `<span class="game-type">
+          OT
+        </span>`;
+
+    }
+
+    if (game.periodType === "SO") {
+
+      gameType =
+        `<span class="game-type">
+          SO
+        </span>`;
+
     }
 
 
-    const awayStreak =
-      formatStreak(
-        game.away.abbrev,
-        game.away.streak
-      );
+    let performerText =
+      "Player stats unavailable";
 
-    const homeStreak =
-      formatStreak(
-        game.home.abbrev,
-        game.home.streak
-      );
+
+    if (game.topPerformer) {
+
+      performerText = `
+
+        🏒
+
+        <span class="performer-name">
+          ${game.topPerformer.name}
+        </span>
+
+        (${game.topPerformer.team})
+
+        —
+
+        ${game.topPerformer.goals} G,
+        ${game.topPerformer.assists} A
+
+      `;
+
+    }
 
 
     card.innerHTML = `
 
       <div class="score-line">
 
-        ${game.away.abbrev}
-        ${game.away.score}
+        <span class="${awayClass}">
+          ${game.away.abbrev}
+          ${game.away.score}
+        </span>
 
-        —
+        <span class="dash">
+          —
+        </span>
 
-        ${game.home.abbrev}
-        ${game.home.score}
+        <span class="${homeClass}">
+          ${game.home.abbrev}
+          ${game.home.score}
+        </span>
+
+        ${gameType}
 
       </div>
+
 
       <div class="performer">
+
         ${performerText}
+
       </div>
+
 
       <div class="streaks">
 
-        <span>
-          ${awayStreak}
-        </span>
+        ${streakHTML(
+          game.away.abbrev,
+          game.away.streak
+        )}
 
-        <span>
-          ${homeStreak}
-        </span>
+        ${streakHTML(
+          game.home.abbrev,
+          game.home.streak
+        )}
 
       </div>
 
     `;
+
 
     container.appendChild(card);
 
@@ -469,24 +621,62 @@ function renderGames(games) {
 }
 
 
-function formatStreak(
-  team,
+
+function streakHTML(
+  abbrev,
   streak
 ) {
+
+  const team =
+    teamNames[abbrev] ||
+    abbrev;
+
 
   if (
     !streak ||
     !streak.code
   ) {
 
-    return `${team} —`;
+    return `
+
+      <span class="streak-pill">
+
+        <span class="streak-team">
+          ${team}
+        </span>
+
+        —
+
+      </span>
+
+    `;
+
   }
 
-  return (
-    `${streak.emoji} ` +
-    `${team} ${streak.code}${streak.count}`
-  );
+
+  const emoji =
+    streak.emoji ||
+    "•";
+
+
+  return `
+
+    <span class="streak-pill">
+
+      ${emoji}
+
+      <span class="streak-team">
+        ${team}
+      </span>
+
+      ${streak.code}${streak.count}
+
+    </span>
+
+  `;
+
 }
+
 
 
 /* --------------------------------
@@ -500,6 +690,7 @@ function renderStandings(standings) {
       "standings"
     );
 
+
   const east =
     standings.filter(
       team =>
@@ -507,6 +698,7 @@ function renderStandings(standings) {
           .toLowerCase()
           .includes("east")
     );
+
 
   const west =
     standings.filter(
@@ -542,7 +734,9 @@ function renderStandings(standings) {
     </div>
 
   `;
+
 }
+
 
 
 function conferenceHTML(
@@ -598,6 +792,7 @@ function conferenceHTML(
               team,
               index + 1
             );
+
         }
       );
 
@@ -614,8 +809,11 @@ function conferenceHTML(
     </div>
   `;
 
+
   return html;
+
 }
+
 
 
 function standingRowHTML(
@@ -629,19 +827,27 @@ function standingRowHTML(
 
   if (team.movement > 0) {
 
-    movementHTML =
-      `<span class="up">
+    movementHTML = `
+
+      <span class="up">
         ↑${team.movement}
-      </span>`;
+      </span>
+
+    `;
+
   }
 
 
   if (team.movement < 0) {
 
-    movementHTML =
-      `<span class="down">
+    movementHTML = `
+
+      <span class="down">
         ↓${Math.abs(team.movement)}
-      </span>`;
+      </span>
+
+    `;
+
   }
 
 
@@ -672,7 +878,9 @@ function standingRowHTML(
     </div>
 
   `;
+
 }
+
 
 
 /* --------------------------------
@@ -686,6 +894,7 @@ function renderUpcoming(games) {
       "upcoming"
     );
 
+
   container.innerHTML = "";
 
 
@@ -695,6 +904,7 @@ function renderUpcoming(games) {
       "<div>No upcoming games found.</div>";
 
     return;
+
   }
 
 
@@ -704,6 +914,7 @@ function renderUpcoming(games) {
       document.createElement(
         "div"
       );
+
 
     card.className =
       "upcoming-card";
@@ -719,12 +930,9 @@ function renderUpcoming(games) {
       date.toLocaleDateString(
         undefined,
         {
-          weekday:
-            "short",
-          month:
-            "short",
-          day:
-            "numeric"
+          weekday: "short",
+          month: "short",
+          day: "numeric"
         }
       );
 
@@ -733,10 +941,8 @@ function renderUpcoming(games) {
       date.toLocaleTimeString(
         undefined,
         {
-          hour:
-            "numeric",
-          minute:
-            "2-digit"
+          hour: "numeric",
+          minute: "2-digit"
         }
       );
 
@@ -771,7 +977,6 @@ function renderUpcoming(games) {
 }
 
 
-/* START */
 
 loadDashboard();
 
