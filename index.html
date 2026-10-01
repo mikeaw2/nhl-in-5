@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>NHL in 5</title>
 
   <style>
@@ -11,176 +12,770 @@
     }
 
     body {
-      font-family: Arial, sans-serif;
-      background: #0b1220;
-      color: white;
       margin: 0;
-      padding: 40px 20px;
+      background: #08111f;
+      color: #f8fafc;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
+      padding: 42px 20px 80px;
     }
 
     h1 {
-      font-size: 42px;
-      margin-bottom: 8px;
+      font-size: 48px;
+      margin: 0;
+      letter-spacing: -1.5px;
     }
 
     .subtitle {
-      color: #b8c1d1;
+      color: #94a3b8;
       font-size: 18px;
-      margin-bottom: 30px;
+      margin-top: 8px;
+      margin-bottom: 38px;
     }
 
-    .section {
-      background: #151f32;
-      border-radius: 16px;
-      padding: 24px;
+    section {
+      margin-bottom: 42px;
     }
 
-    .section h2 {
-      margin-top: 0;
+    .section-title {
+      font-size: 27px;
+      margin-bottom: 18px;
     }
+
+    .panel {
+      background: #121d30;
+      border-radius: 18px;
+      padding: 22px;
+    }
+
+    /* -------------------------
+       YESTERDAY
+    -------------------------- */
 
     .games {
       display: grid;
-      gap: 12px;
-      margin-top: 20px;
+      gap: 14px;
     }
 
-    .game {
-      background: #0f1728;
-      border-radius: 12px;
-      padding: 18px 20px;
+    .game-card {
+      background: #0c1627;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .score-line {
+      font-size: 27px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .performer {
+      font-size: 16px;
+      margin-bottom: 9px;
+      color: #e2e8f0;
+    }
+
+    .streaks {
       display: flex;
-      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 15px;
+      color: #cbd5e1;
+    }
+
+    /* -------------------------
+       STANDINGS
+    -------------------------- */
+
+    .conferences {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .conference {
+      background: #121d30;
+      border-radius: 18px;
+      padding: 20px;
+    }
+
+    .conference-title {
+      font-size: 21px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .division {
+      margin-bottom: 27px;
+    }
+
+    .division:last-child {
+      margin-bottom: 0;
+    }
+
+    .division-title {
+      text-transform: uppercase;
+      color: #64748b;
+      font-size: 12px;
+      letter-spacing: 1.4px;
+      margin-bottom: 7px;
+      font-weight: 700;
+    }
+
+    .standing-row {
+      display: grid;
+      grid-template-columns:
+        28px
+        1fr
+        95px
+        50px
+        48px;
+
       align-items: center;
+
+      padding: 8px 0;
+
+      border-bottom:
+        1px solid rgba(255,255,255,.06);
+
+      font-size: 14px;
     }
 
-    .matchup {
+    .standing-row:last-child {
+      border-bottom: none;
+    }
+
+    .rank {
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .team {
+      font-weight: 700;
+    }
+
+    .record {
+      color: #94a3b8;
+      text-align: right;
+    }
+
+    .points {
+      text-align: right;
+      font-weight: 800;
+    }
+
+    .movement {
+      text-align: right;
+      font-weight: 800;
+    }
+
+    .up {
+      color: #4ade80;
+    }
+
+    .down {
+      color: #fb7185;
+    }
+
+    .same {
+      color: #64748b;
+    }
+
+    /* -------------------------
+       UPCOMING
+    -------------------------- */
+
+    .upcoming-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .upcoming-card {
+      background: #0c1627;
+      border-radius: 13px;
+      padding: 17px;
+    }
+
+    .upcoming-matchup {
       font-size: 20px;
-      font-weight: bold;
+      font-weight: 800;
+      margin-bottom: 6px;
     }
 
-    .score {
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .status {
-      color: #8fa0b8;
-      font-size: 13px;
-      margin-top: 5px;
+    .upcoming-time {
+      color: #94a3b8;
+      font-size: 14px;
     }
 
     .loading,
     .error {
-      color: #aab6c8;
+      color: #94a3b8;
+      padding: 10px 0;
+    }
+
+    @media (max-width: 750px) {
+      .container {
+        padding-top: 28px;
+      }
+
+      h1 {
+        font-size: 39px;
+      }
+
+      .conferences {
+        grid-template-columns: 1fr;
+      }
+
+      .standing-row {
+        grid-template-columns:
+          25px
+          1fr
+          82px
+          45px
+          42px;
+      }
+
+      .record {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <h1>NHL in 5</h1>
-    <div class="subtitle">
-      Your quick daily NHL dashboard.
-    </div>
+  <h1>NHL in 5</h1>
 
-    <div class="section">
-      <h2>Yesterday's Games</h2>
+  <div class="subtitle">
+    Everything you need to know in five minutes.
+  </div>
+
+  <!-- YESTERDAY -->
+
+  <section>
+
+    <h2 class="section-title">
+      Yesterday
+    </h2>
+
+    <div class="panel">
 
       <div id="games" class="games">
-        <div class="loading">Loading NHL scores...</div>
+        <div class="loading">
+          Loading yesterday's games...
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- STANDINGS -->
+
+  <section>
+
+    <h2 class="section-title">
+      Standings
+    </h2>
+
+    <div id="standings">
+      <div class="loading">
+        Loading standings...
       </div>
     </div>
 
-  </div>
+  </section>
 
-  <script>
-    async function loadGames() {
 
-      const gamesContainer = document.getElementById("games");
+  <!-- UPCOMING -->
 
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+  <section>
 
-      const date = yesterday.toISOString().split("T")[0];
+    <h2 class="section-title">
+      Up Next
+    </h2>
 
-      const url =
-        `/.netlify/functions/nhl-scores?date=${date}`;
+    <div class="panel">
 
-      try {
+      <div
+        id="upcoming"
+        class="upcoming-grid"
+      >
+        <div class="loading">
+          Loading upcoming games...
+        </div>
+      </div>
 
-        const response = await fetch(url);
+    </div>
 
-        if (!response.ok) {
-          throw new Error("Unable to load scores");
-        }
+  </section>
 
-        const data = await response.json();
+</div>
 
-        gamesContainer.innerHTML = "";
 
-        if (!data.games || data.games.length === 0) {
-          gamesContainer.innerHTML =
-            "<div>No NHL games were played yesterday.</div>";
-          return;
-        }
+<script>
 
-        data.games.forEach(game => {
+async function loadDashboard() {
 
-          const away = game.awayTeam;
-          const home = game.homeTeam;
+  try {
 
-          const gameCard = document.createElement("div");
+    const response = await fetch(
+      "/.netlify/functions/nhl-scores"
+    );
 
-          gameCard.className = "game";
-
-          const overtime =
-            game.gameOutcome?.lastPeriodType === "OT"
-              ? " • OT"
-              : game.gameOutcome?.lastPeriodType === "SO"
-              ? " • SO"
-              : "";
-
-          gameCard.innerHTML = `
-            <div>
-              <div class="matchup">
-                ${away.abbrev} @ ${home.abbrev}
-              </div>
-
-              <div class="status">
-                Final${overtime}
-              </div>
-            </div>
-
-            <div class="score">
-              ${away.score ?? "-"} — ${home.score ?? "-"}
-            </div>
-          `;
-
-          gamesContainer.appendChild(gameCard);
-
-        });
-
-      } catch (error) {
-
-        console.error(error);
-
-        gamesContainer.innerHTML =
-          '<div class="error">Could not load NHL scores.</div>';
-
-      }
-
+    if (!response.ok) {
+      throw new Error(
+        "Could not load NHL data."
+      );
     }
 
-    loadGames();
-  </script>
+    const data = await response.json();
+
+    renderGames(data.games || []);
+
+    renderStandings(
+      data.standings || []
+    );
+
+    renderUpcoming(
+      data.upcoming || []
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById(
+      "games"
+    ).innerHTML =
+      '<div class="error">Could not load NHL data.</div>';
+
+    document.getElementById(
+      "standings"
+    ).innerHTML =
+      '<div class="error">Could not load standings.</div>';
+
+    document.getElementById(
+      "upcoming"
+    ).innerHTML =
+      '<div class="error">Could not load upcoming games.</div>';
+  }
+}
+
+
+/* --------------------------------
+   YESTERDAY
+-------------------------------- */
+
+function renderGames(games) {
+
+  const container =
+    document.getElementById("games");
+
+  container.innerHTML = "";
+
+  if (!games.length) {
+
+    container.innerHTML =
+      "<div>No NHL games were played yesterday.</div>";
+
+    return;
+  }
+
+  games.forEach(game => {
+
+    const card =
+      document.createElement("div");
+
+    card.className =
+      "game-card";
+
+
+    let performerText =
+      "No player stats available.";
+
+    if (game.topPerformer) {
+
+      performerText =
+        `🏒 ${game.topPerformer.name} (${game.topPerformer.team}) — ` +
+        `${game.topPerformer.goals} G, ` +
+        `${game.topPerformer.assists} A`;
+    }
+
+
+    const awayStreak =
+      formatStreak(
+        game.away.abbrev,
+        game.away.streak
+      );
+
+    const homeStreak =
+      formatStreak(
+        game.home.abbrev,
+        game.home.streak
+      );
+
+
+    card.innerHTML = `
+
+      <div class="score-line">
+
+        ${game.away.abbrev}
+        ${game.away.score}
+
+        —
+
+        ${game.home.abbrev}
+        ${game.home.score}
+
+      </div>
+
+      <div class="performer">
+        ${performerText}
+      </div>
+
+      <div class="streaks">
+
+        <span>
+          ${awayStreak}
+        </span>
+
+        <span>
+          ${homeStreak}
+        </span>
+
+      </div>
+
+    `;
+
+    container.appendChild(card);
+
+  });
+
+}
+
+
+function formatStreak(
+  team,
+  streak
+) {
+
+  if (
+    !streak ||
+    !streak.code
+  ) {
+
+    return `${team} —`;
+  }
+
+  return (
+    `${streak.emoji} ` +
+    `${team} ${streak.code}${streak.count}`
+  );
+}
+
+
+/* --------------------------------
+   STANDINGS
+-------------------------------- */
+
+function renderStandings(standings) {
+
+  const container =
+    document.getElementById(
+      "standings"
+    );
+
+  const east =
+    standings.filter(
+      team =>
+        team.conference
+          .toLowerCase()
+          .includes("east")
+    );
+
+  const west =
+    standings.filter(
+      team =>
+        team.conference
+          .toLowerCase()
+          .includes("west")
+    );
+
+
+  container.innerHTML = `
+
+    <div class="conferences">
+
+      ${conferenceHTML(
+        "Eastern Conference",
+        east,
+        [
+          "Atlantic",
+          "Metropolitan"
+        ]
+      )}
+
+      ${conferenceHTML(
+        "Western Conference",
+        west,
+        [
+          "Central",
+          "Pacific"
+        ]
+      )}
+
+    </div>
+
+  `;
+}
+
+
+function conferenceHTML(
+  conferenceName,
+  teams,
+  divisionNames
+) {
+
+  let html = `
+
+    <div class="conference">
+
+      <div class="conference-title">
+        ${conferenceName}
+      </div>
+
+  `;
+
+
+  divisionNames.forEach(
+    divisionName => {
+
+      const divisionTeams =
+        teams
+          .filter(
+            team =>
+              team.division ===
+              divisionName
+          )
+          .sort(
+            (a,b) =>
+              a.divisionRank -
+              b.divisionRank
+          );
+
+
+      html += `
+
+        <div class="division">
+
+          <div class="division-title">
+            ${divisionName}
+          </div>
+
+      `;
+
+
+      divisionTeams.forEach(
+        (team, index) => {
+
+          html +=
+            standingRowHTML(
+              team,
+              index + 1
+            );
+        }
+      );
+
+
+      html += `
+        </div>
+      `;
+
+    }
+  );
+
+
+  html += `
+    </div>
+  `;
+
+  return html;
+}
+
+
+function standingRowHTML(
+  team,
+  rank
+) {
+
+  let movementHTML =
+    `<span class="same">—</span>`;
+
+
+  if (team.movement > 0) {
+
+    movementHTML =
+      `<span class="up">
+        ↑${team.movement}
+      </span>`;
+  }
+
+
+  if (team.movement < 0) {
+
+    movementHTML =
+      `<span class="down">
+        ↓${Math.abs(team.movement)}
+      </span>`;
+  }
+
+
+  return `
+
+    <div class="standing-row">
+
+      <div class="rank">
+        ${rank}
+      </div>
+
+      <div class="team">
+        ${team.abbrev}
+      </div>
+
+      <div class="record">
+        ${team.wins}-${team.losses}-${team.otLosses}
+      </div>
+
+      <div class="points">
+        ${team.points}
+      </div>
+
+      <div class="movement">
+        ${movementHTML}
+      </div>
+
+    </div>
+
+  `;
+}
+
+
+/* --------------------------------
+   UPCOMING
+-------------------------------- */
+
+function renderUpcoming(games) {
+
+  const container =
+    document.getElementById(
+      "upcoming"
+    );
+
+  container.innerHTML = "";
+
+
+  if (!games.length) {
+
+    container.innerHTML =
+      "<div>No upcoming games found.</div>";
+
+    return;
+  }
+
+
+  games.forEach(game => {
+
+    const card =
+      document.createElement(
+        "div"
+      );
+
+    card.className =
+      "upcoming-card";
+
+
+    const date =
+      new Date(
+        game.startTimeUTC
+      );
+
+
+    const dateLabel =
+      date.toLocaleDateString(
+        undefined,
+        {
+          weekday:
+            "short",
+          month:
+            "short",
+          day:
+            "numeric"
+        }
+      );
+
+
+    const timeLabel =
+      date.toLocaleTimeString(
+        undefined,
+        {
+          hour:
+            "numeric",
+          minute:
+            "2-digit"
+        }
+      );
+
+
+    card.innerHTML = `
+
+      <div class="upcoming-matchup">
+
+        ${game.away}
+        @
+        ${game.home}
+
+      </div>
+
+      <div class="upcoming-time">
+
+        ${dateLabel}
+        •
+        ${timeLabel}
+
+      </div>
+
+    `;
+
+
+    container.appendChild(
+      card
+    );
+
+  });
+
+}
+
+
+/* START */
+
+loadDashboard();
+
+</script>
 
 </body>
 </html>
