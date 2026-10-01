@@ -1,36 +1,66 @@
 const NHL_BASE = "https://api-web.nhle.com/v1";
+const TIME_ZONE = "America/Chicago";
 
 exports.handler = async function () {
   try {
     const now = new Date();
 
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
+    // ----------------------------------------------------
+    // CENTRAL-TIME DATE HELPERS
+    // ----------------------------------------------------
 
-    const twoDaysAgo = new Date(now);
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    function getCentralDate(offsetDays = 0) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(now);
 
-    const formatDate = (date) => date.toISOString().split("T")[0];
+      const year = Number(
+        parts.find(part => part.type === "year").value
+      );
 
-    const yesterdayStr = formatDate(yesterday);
-    const twoDaysAgoStr = formatDate(twoDaysAgo);
+      const month = Number(
+        parts.find(part => part.type === "month").value
+      );
+
+      const day = Number(
+        parts.find(part => part.type === "day").value
+      );
+
+      // Use UTC noon simply as a safe calendar-date calculator.
+      const adjusted = new Date(
+        Date.UTC(year, month - 1, day + offsetDays, 12)
+      );
+
+      return adjusted.toISOString().split("T")[0];
+    }
+
+    const todayStr = getCentralDate(0);
+    const yesterdayStr = getCentralDate(-1);
+    const twoDaysAgoStr = getCentralDate(-2);
 
     async function getJSON(url) {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`Request failed: ${response.status} ${url}`);
+        throw new Error(
+          `Request failed: ${response.status} ${url}`
+        );
       }
 
       return response.json();
     }
 
     const [
-      scores,
+      todayScores,
+      yesterdayScores,
       standingsNow,
       standingsPrevious,
       schedule
     ] = await Promise.all([
+      getJSON(`${NHL_BASE}/score/${todayStr}`),
       getJSON(`${NHL_BASE}/score/${yesterdayStr}`),
       getJSON(`${NHL_BASE}/standings/now`),
       getJSON(`${NHL_BASE}/standings/${twoDaysAgoStr}`),
@@ -69,7 +99,9 @@ exports.handler = async function () {
     // ----------------------------------------------------
 
     function getTeamName(standing, fallbackAbbrev) {
-      if (!standing) return fallbackAbbrev;
+      if (!standing) {
+        return fallbackAbbrev;
+      }
 
       return (
         standing.teamCommonName?.default ||
@@ -97,7 +129,8 @@ exports.handler = async function () {
         standing.streak?.count ||
         0;
 
-      const normalized = String(code).toUpperCase();
+      const normalized =
+        String(code).toUpperCase();
 
       return {
         code: normalized,
@@ -111,7 +144,10 @@ exports.handler = async function () {
       };
     }
 
-    async function getFullPlayerName(playerId, fallbackName) {
+    async function getFullPlayerName(
+      playerId,
+      fallbackName
+    ) {
       if (!playerId) {
         return fallbackName || "Unknown";
       }
@@ -131,7 +167,8 @@ exports.handler = async function () {
           profile.lastName ||
           "";
 
-        const fullName = `${first} ${last}`.trim();
+        const fullName =
+          `${first} ${last}`.trim();
 
         if (fullName) {
           return fullName;
@@ -149,21 +186,134 @@ exports.handler = async function () {
       }
     }
 
+    function getGameStatus(game) {
+      const state = game.gameState || "";
+
+      if (
+        state === "LIVE" ||
+        state === "CRIT"
+      ) {
+        const period =
+          game.periodDescriptor?.number;
+
+        const clock =
+          game.clock?.timeRemaining;
+
+        if (period && clock) {
+          return `${period}${getOrdinal(period)} • ${clock}`;
+        }
+
+        if (period) {
+          return `${period}${getOrdinal(period)} period`;
+        }
+
+        return "Live";
+      }
+
+      if (
+        state === "FINAL" ||
+        state === "OFF"
+      ) {
+        const periodType =
+          game.gameOutcome?.lastPeriodType;
+
+        if (periodType === "OT") {
+          return "Final • OT";
+        }
+
+        if (periodType === "SO") {
+          return "Final • SO";
+        }
+
+        return "Final";
+      }
+
+      return "Scheduled";
+    }
+
+    function getOrdinal(number) {
+      if (number === 1) return "st";
+      if (number === 2) return "nd";
+      if (number === 3) return "rd";
+      return "th";
+    }
+
+    // ----------------------------------------------------
+    // TODAY / LIVE
+    // ----------------------------------------------------
+
+    const todayGames =
+      (todayScores.games || []).map(game => {
+        const awayAbbrev =
+          game.awayTeam?.abbrev || "";
+
+        const homeAbbrev =
+          game.homeTeam?.abbrev || "";
+
+        const awayStanding =
+          standingsByTeam[awayAbbrev];
+
+        const homeStanding =
+          standingsByTeam[homeAbbrev];
+
+        return {
+          id: game.id,
+
+          gameState:
+            game.gameState || "",
+
+          startTimeUTC:
+            game.startTimeUTC || null,
+
+          status:
+            getGameStatus(game),
+
+          away: {
+            abbrev: awayAbbrev,
+            name: getTeamName(
+              awayStanding,
+              awayAbbrev
+            ),
+            score:
+              game.awayTeam?.score ?? null
+          },
+
+          home: {
+            abbrev: homeAbbrev,
+            name: getTeamName(
+              homeStanding,
+              homeAbbrev
+            ),
+            score:
+              game.homeTeam?.score ?? null
+          }
+        };
+      });
+
     // ----------------------------------------------------
     // YESTERDAY'S GAMES
     // ----------------------------------------------------
 
-    const completedGames = (scores.games || []).filter(game =>
-      ["FINAL", "OFF"].includes(game.gameState)
-    );
+    const completedGames =
+      (yesterdayScores.games || []).filter(game =>
+        ["FINAL", "OFF"].includes(
+          game.gameState
+        )
+      );
 
     const games = await Promise.all(
-      completedGames.map(async (game) => {
-        const awayAbbrev = game.awayTeam?.abbrev || "";
-        const homeAbbrev = game.homeTeam?.abbrev || "";
+      completedGames.map(async game => {
+        const awayAbbrev =
+          game.awayTeam?.abbrev || "";
 
-        const awayStanding = standingsByTeam[awayAbbrev];
-        const homeStanding = standingsByTeam[homeAbbrev];
+        const homeAbbrev =
+          game.homeTeam?.abbrev || "";
+
+        const awayStanding =
+          standingsByTeam[awayAbbrev];
+
+        const homeStanding =
+          standingsByTeam[homeAbbrev];
 
         let topPerformer = null;
 
@@ -174,7 +324,10 @@ exports.handler = async function () {
 
           const allPlayers = [];
 
-          function collectPlayers(teamStats, teamAbbrev) {
+          function collectPlayers(
+            teamStats,
+            teamAbbrev
+          ) {
             if (!teamStats) return;
 
             const groups = [
@@ -183,9 +336,15 @@ exports.handler = async function () {
             ];
 
             for (const player of groups) {
-              const goals = player.goals ?? 0;
-              const assists = player.assists ?? 0;
-              const points = player.points ?? (goals + assists);
+              const goals =
+                player.goals ?? 0;
+
+              const assists =
+                player.assists ?? 0;
+
+              const points =
+                player.points ??
+                (goals + assists);
 
               const fallbackName =
                 player.name?.default ||
@@ -193,9 +352,14 @@ exports.handler = async function () {
                 "Unknown";
 
               allPlayers.push({
-                playerId: player.playerId ?? null,
+                playerId:
+                  player.playerId ?? null,
+
                 fallbackName,
-                team: teamAbbrev,
+
+                team:
+                  teamAbbrev,
+
                 goals,
                 assists,
                 points
@@ -225,13 +389,15 @@ exports.handler = async function () {
             return b.assists - a.assists;
           });
 
-          const bestPlayer = allPlayers[0] || null;
+          const bestPlayer =
+            allPlayers[0] || null;
 
           if (bestPlayer) {
-            const fullName = await getFullPlayerName(
-              bestPlayer.playerId,
-              bestPlayer.fallbackName
-            );
+            const fullName =
+              await getFullPlayerName(
+                bestPlayer.playerId,
+                bestPlayer.fallbackName
+              );
 
             topPerformer = {
               name: fullName,
@@ -249,30 +415,46 @@ exports.handler = async function () {
           );
         }
 
-        const awayStreak = streakInfo(awayStanding);
-        const homeStreak = streakInfo(homeStanding);
-
         return {
           id: game.id,
 
           away: {
             abbrev: awayAbbrev,
-            name: getTeamName(awayStanding, awayAbbrev),
-            score: game.awayTeam?.score ?? 0,
-            streak: awayStreak
+
+            name:
+              getTeamName(
+                awayStanding,
+                awayAbbrev
+              ),
+
+            score:
+              game.awayTeam?.score ?? 0,
+
+            streak:
+              streakInfo(awayStanding)
           },
 
           home: {
             abbrev: homeAbbrev,
-            name: getTeamName(homeStanding, homeAbbrev),
-            score: game.homeTeam?.score ?? 0,
-            streak: homeStreak
+
+            name:
+              getTeamName(
+                homeStanding,
+                homeAbbrev
+              ),
+
+            score:
+              game.homeTeam?.score ?? 0,
+
+            streak:
+              streakInfo(homeStanding)
           },
 
           topPerformer,
 
           periodType:
-            game.gameOutcome?.lastPeriodType || ""
+            game.gameOutcome
+              ?.lastPeriodType || ""
         };
       })
     );
@@ -281,60 +463,67 @@ exports.handler = async function () {
     // FULL STANDINGS
     // ----------------------------------------------------
 
-    const standings = (standingsNow.standings || []).map(team => {
-      const abbrev =
-        team.teamAbbrev?.default ||
-        team.teamAbbrev ||
-        "";
+    const standings =
+      (standingsNow.standings || []).map(team => {
+        const abbrev =
+          team.teamAbbrev?.default ||
+          team.teamAbbrev ||
+          "";
 
-      const currentRank =
-        team.divisionSequence ?? null;
+        const currentRank =
+          team.divisionSequence ?? null;
 
-      const oldRank =
-        previousRanks[abbrev];
+        const oldRank =
+          previousRanks[abbrev];
 
-      let movement = 0;
+        let movement = 0;
 
-      if (
-        typeof currentRank === "number" &&
-        typeof oldRank === "number"
-      ) {
-        movement = oldRank - currentRank;
-      }
+        if (
+          typeof currentRank === "number" &&
+          typeof oldRank === "number"
+        ) {
+          movement =
+            oldRank - currentRank;
+        }
 
-      return {
-        abbrev,
-
-        name:
-          team.teamCommonName?.default ||
-          team.teamName?.default ||
+        return {
           abbrev,
 
-        conference:
-          team.conferenceName ||
-          "",
+          name:
+            team.teamCommonName?.default ||
+            team.teamName?.default ||
+            abbrev,
 
-        division:
-          team.divisionName ||
-          "",
+          conference:
+            team.conferenceName || "",
 
-        wins: team.wins ?? 0,
-        losses: team.losses ?? 0,
-        otLosses: team.otLosses ?? 0,
-        points: team.points ?? 0,
+          division:
+            team.divisionName || "",
 
-        conferenceRank:
-          team.conferenceSequence ?? null,
+          wins:
+            team.wins ?? 0,
 
-        divisionRank:
-          team.divisionSequence ?? null,
+          losses:
+            team.losses ?? 0,
 
-        leagueRank:
-          team.leagueSequence ?? null,
+          otLosses:
+            team.otLosses ?? 0,
 
-        movement
-      };
-    });
+          points:
+            team.points ?? 0,
+
+          conferenceRank:
+            team.conferenceSequence ?? null,
+
+          divisionRank:
+            team.divisionSequence ?? null,
+
+          leagueRank:
+            team.leagueSequence ?? null,
+
+          movement
+        };
+      });
 
     // ----------------------------------------------------
     // UPCOMING GAMES
@@ -345,7 +534,9 @@ exports.handler = async function () {
     for (const week of schedule.gameWeek || []) {
       for (const game of week.games || []) {
         if (
-          ["FUT", "PRE"].includes(game.gameState)
+          ["FUT", "PRE"].includes(
+            game.gameState
+          )
         ) {
           const awayAbbrev =
             game.awayTeam?.abbrev || "";
@@ -360,17 +551,24 @@ exports.handler = async function () {
             standingsByTeam[homeAbbrev];
 
           upcoming.push({
-            id: game.id,
-            startTimeUTC: game.startTimeUTC,
+            id:
+              game.id,
 
-            away: awayAbbrev,
+            startTimeUTC:
+              game.startTimeUTC,
+
+            away:
+              awayAbbrev,
+
             awayName:
               getTeamName(
                 awayStanding,
                 awayAbbrev
               ),
 
-            home: homeAbbrev,
+            home:
+              homeAbbrev,
+
             homeName:
               getTeamName(
                 homeStanding,
@@ -387,16 +585,24 @@ exports.handler = async function () {
         new Date(b.startTimeUTC)
     );
 
-    const nextGames = upcoming.slice(0, 8);
+    const nextGames =
+      upcoming.slice(0, 8);
 
     return {
       statusCode: 200,
+
       headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=300"
+        "Content-Type":
+          "application/json",
+
+        "Cache-Control":
+          "public, max-age=300"
       },
+
       body: JSON.stringify({
-        date: yesterdayStr,
+        today: todayStr,
+        yesterday: yesterdayStr,
+        todayGames,
         games,
         standings,
         upcoming: nextGames
@@ -408,11 +614,16 @@ exports.handler = async function () {
 
     return {
       statusCode: 500,
+
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type":
+          "application/json"
       },
+
       body: JSON.stringify({
-        error: error.message || "Something went wrong"
+        error:
+          error.message ||
+          "Something went wrong"
       })
     };
   }
