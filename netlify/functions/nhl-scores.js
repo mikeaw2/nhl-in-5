@@ -25,7 +25,6 @@ exports.handler = async function () {
       return response.json();
     }
 
-    // Fetch the main datasets in parallel
     const [
       scores,
       standingsNow,
@@ -61,8 +60,85 @@ exports.handler = async function () {
         team.teamAbbrev ||
         "";
 
-    previousRanks[abbrev] =
-      team.divisionSequence ?? null;
+      previousRanks[abbrev] =
+        team.divisionSequence ?? null;
+    }
+
+    // ----------------------------------------------------
+    // HELPERS
+    // ----------------------------------------------------
+
+    function getTeamLocation(standing, fallbackAbbrev) {
+      if (!standing) return fallbackAbbrev;
+
+      return (
+        standing.placeName?.default ||
+        standing.teamPlaceName?.default ||
+        standing.teamCommonName?.default ||
+        standing.teamName?.default ||
+        fallbackAbbrev
+      );
+    }
+
+    function getPlayerName(player) {
+      const first =
+        player.firstName?.default ||
+        player.firstName ||
+        "";
+
+      const last =
+        player.lastName?.default ||
+        player.lastName ||
+        "";
+
+      if (first && last) {
+        return `${first} ${last}`.trim();
+      }
+
+      if (player.name?.default) {
+        return player.name.default;
+      }
+
+      if (typeof player.name === "string") {
+        return player.name;
+      }
+
+      if (last) return last;
+
+      return "Unknown";
+    }
+
+    function streakInfo(standing) {
+      if (!standing) {
+        return {
+          code: "",
+          count: 0,
+          emoji: ""
+        };
+      }
+
+      const code =
+        standing.streakCode ||
+        standing.streak?.code ||
+        "";
+
+      const count =
+        standing.streakCount ||
+        standing.streak?.count ||
+        0;
+
+      const normalized = String(code).toUpperCase();
+
+      return {
+        code: normalized,
+        count,
+        emoji:
+          normalized.startsWith("W")
+            ? "🔥"
+            : normalized.startsWith("L")
+            ? "❄️"
+            : "•"
+      };
     }
 
     // ----------------------------------------------------
@@ -89,32 +165,6 @@ exports.handler = async function () {
           );
 
           const allPlayers = [];
-
-          function getPlayerName(player) {
-            const first =
-              player.firstName?.default ||
-              player.firstName ||
-              "";
-
-            const last =
-              player.lastName?.default ||
-              player.lastName ||
-              "";
-
-            const fullName = `${first} ${last}`.trim();
-
-            if (fullName) return fullName;
-
-            if (player.name?.default) {
-              return player.name.default;
-            }
-
-            if (typeof player.name === "string") {
-              return player.name;
-            }
-
-            return "Unknown";
-          }
 
           function collectPlayers(teamStats, teamAbbrev) {
             if (!teamStats) return;
@@ -170,39 +220,6 @@ exports.handler = async function () {
           );
         }
 
-        function streakInfo(standing) {
-          if (!standing) {
-            return {
-              code: "",
-              count: 0,
-              emoji: ""
-            };
-          }
-
-          const code =
-            standing.streakCode ||
-            standing.streak?.code ||
-            "";
-
-          const count =
-            standing.streakCount ||
-            standing.streak?.count ||
-            0;
-
-          const normalized = String(code).toUpperCase();
-
-          return {
-            code: normalized,
-            count,
-            emoji:
-              normalized.startsWith("W")
-                ? "🔥"
-                : normalized.startsWith("L")
-                ? "❄️"
-                : "•"
-          };
-        }
-
         const awayStreak = streakInfo(awayStanding);
         const homeStreak = streakInfo(homeStanding);
 
@@ -211,12 +228,14 @@ exports.handler = async function () {
 
           away: {
             abbrev: awayAbbrev,
+            location: getTeamLocation(awayStanding, awayAbbrev),
             score: game.awayTeam?.score ?? 0,
             streak: awayStreak
           },
 
           home: {
             abbrev: homeAbbrev,
+            location: getTeamLocation(homeStanding, homeAbbrev),
             score: game.homeTeam?.score ?? 0,
             streak: homeStreak
           },
@@ -239,10 +258,11 @@ exports.handler = async function () {
         team.teamAbbrev ||
         "";
 
-    const currentRank =
-      team.divisionSequence ?? null;
+      const currentRank =
+        team.divisionSequence ?? null;
 
-      const oldRank = previousRanks[abbrev];
+      const oldRank =
+        previousRanks[abbrev];
 
       let movement = 0;
 
@@ -258,6 +278,12 @@ exports.handler = async function () {
 
         name:
           team.teamName?.default ||
+          team.teamCommonName?.default ||
+          abbrev,
+
+        location:
+          team.placeName?.default ||
+          team.teamPlaceName?.default ||
           team.teamCommonName?.default ||
           abbrev,
 
@@ -298,15 +324,35 @@ exports.handler = async function () {
         if (
           ["FUT", "PRE"].includes(game.gameState)
         ) {
+          const awayAbbrev =
+            game.awayTeam?.abbrev || "";
+
+          const homeAbbrev =
+            game.homeTeam?.abbrev || "";
+
+          const awayStanding =
+            standingsByTeam[awayAbbrev];
+
+          const homeStanding =
+            standingsByTeam[homeAbbrev];
+
           upcoming.push({
             id: game.id,
             startTimeUTC: game.startTimeUTC,
 
-            away:
-              game.awayTeam?.abbrev || "",
+            away: awayAbbrev,
+            awayLocation:
+              getTeamLocation(
+                awayStanding,
+                awayAbbrev
+              ),
 
-            home:
-              game.homeTeam?.abbrev || ""
+            home: homeAbbrev,
+            homeLocation:
+              getTeamLocation(
+                homeStanding,
+                homeAbbrev
+              )
           });
         }
       }
