@@ -80,34 +80,6 @@ exports.handler = async function () {
       );
     }
 
-    function getPlayerName(player) {
-      const first =
-        player.firstName?.default ||
-        player.firstName ||
-        "";
-
-      const last =
-        player.lastName?.default ||
-        player.lastName ||
-        "";
-
-      if (first && last) {
-        return `${first} ${last}`.trim();
-      }
-
-      if (player.name?.default) {
-        return player.name.default;
-      }
-
-      if (typeof player.name === "string") {
-        return player.name;
-      }
-
-      if (last) return last;
-
-      return "Unknown";
-    }
-
     function streakInfo(standing) {
       if (!standing) {
         return {
@@ -139,6 +111,44 @@ exports.handler = async function () {
             ? "❄️"
             : "•"
       };
+    }
+
+    async function getFullPlayerName(playerId, fallbackName) {
+      if (!playerId) {
+        return fallbackName || "Unknown";
+      }
+
+      try {
+        const profile = await getJSON(
+          `${NHL_BASE}/player/${playerId}/landing`
+        );
+
+        const first =
+          profile.firstName?.default ||
+          profile.firstName ||
+          "";
+
+        const last =
+          profile.lastName?.default ||
+          profile.lastName ||
+          "";
+
+        const fullName = `${first} ${last}`.trim();
+
+        if (fullName) {
+          return fullName;
+        }
+
+        return fallbackName || "Unknown";
+
+      } catch (error) {
+        console.log(
+          `Could not load player profile for ${playerId}`,
+          error.message
+        );
+
+        return fallbackName || "Unknown";
+      }
     }
 
     // ----------------------------------------------------
@@ -179,8 +189,14 @@ exports.handler = async function () {
               const assists = player.assists ?? 0;
               const points = player.points ?? (goals + assists);
 
+              const fallbackName =
+                player.name?.default ||
+                player.name ||
+                "Unknown";
+
               allPlayers.push({
-                name: getPlayerName(player),
+                playerId: player.playerId ?? null,
+                fallbackName,
                 team: teamAbbrev,
                 goals,
                 assists,
@@ -211,7 +227,22 @@ exports.handler = async function () {
             return b.assists - a.assists;
           });
 
-          topPerformer = allPlayers[0] || null;
+          const bestPlayer = allPlayers[0] || null;
+
+          if (bestPlayer) {
+            const fullName = await getFullPlayerName(
+              bestPlayer.playerId,
+              bestPlayer.fallbackName
+            );
+
+            topPerformer = {
+              name: fullName,
+              team: bestPlayer.team,
+              goals: bestPlayer.goals,
+              assists: bestPlayer.assists,
+              points: bestPlayer.points
+            };
+          }
 
         } catch (error) {
           console.log(
