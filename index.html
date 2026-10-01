@@ -112,7 +112,7 @@
       const date = yesterday.toISOString().split("T")[0];
 
       const url =
-        `https://api-web.nhle.com/v1/score/${date}`;
+        `/.netlify/functions/nhl-scores?date=${date}`;
 
       try {
 
