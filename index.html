@@ -56,7 +56,6 @@
       padding: 22px;
     }
 
-
     /* -------------------------
        YESTERDAY
     -------------------------- */
@@ -77,11 +76,9 @@
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-
       font-size: 29px;
       font-weight: 800;
       letter-spacing: -0.6px;
-
       margin-bottom: 13px;
     }
 
@@ -128,21 +125,16 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-
       background: #121f33;
       color: #cbd5e1;
-
       padding: 7px 10px;
-
       border-radius: 999px;
-
       font-size: 14px;
     }
 
     .streak-team {
       font-weight: 650;
     }
-
 
     /* -------------------------
        STANDINGS
@@ -183,6 +175,27 @@
       font-weight: 700;
     }
 
+    .standing-header {
+      display: grid;
+      grid-template-columns:
+        28px
+        1fr
+        95px
+        50px
+        48px;
+
+      align-items: center;
+      padding: 0 0 7px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
     .standing-row {
       display: grid;
       grid-template-columns:
@@ -193,12 +206,9 @@
         48px;
 
       align-items: center;
-
       padding: 8px 0;
-
       border-bottom:
         1px solid rgba(255,255,255,.06);
-
       font-size: 14px;
     }
 
@@ -242,7 +252,6 @@
       color: #64748b;
     }
 
-
     /* -------------------------
        UPCOMING
     -------------------------- */
@@ -277,7 +286,6 @@
       padding: 10px 0;
     }
 
-
     /* -------------------------
        MOBILE
     -------------------------- */
@@ -298,6 +306,15 @@
 
       .score-line {
         font-size: 25px;
+      }
+
+      .standing-header {
+        grid-template-columns:
+          25px
+          1fr
+          82px
+          45px
+          42px;
       }
 
       .standing-row {
@@ -326,7 +343,6 @@
     Everything you need to know in five minutes.
   </div>
 
-
   <!-- YESTERDAY -->
 
   <section>
@@ -347,7 +363,6 @@
 
   </section>
 
-
   <!-- STANDINGS -->
 
   <section>
@@ -365,7 +380,6 @@
     </div>
 
   </section>
-
 
   <!-- UPCOMING -->
 
@@ -394,7 +408,6 @@
 
 </div>
 
-
 <script>
 
 let teamNames = {};
@@ -417,19 +430,14 @@ async function loadDashboard() {
     const data = await response.json();
 
 
-    /*
-      Create a lookup so:
-      COL becomes Colorado
-      PIT becomes Pittsburgh
-      etc.
-    */
-
     teamNames = {};
 
     (data.standings || []).forEach(team => {
 
       teamNames[team.abbrev] =
-        team.name || team.abbrev;
+        team.location ||
+        team.name ||
+        team.abbrev;
 
     });
 
@@ -467,7 +475,6 @@ async function loadDashboard() {
 
   }
 }
-
 
 
 /* --------------------------------
@@ -572,7 +579,7 @@ function renderGames(games) {
       <div class="score-line">
 
         <span class="${awayClass}">
-          ${game.away.abbrev}
+          ${game.away.location}
           ${game.away.score}
         </span>
 
@@ -581,7 +588,7 @@ function renderGames(games) {
         </span>
 
         <span class="${homeClass}">
-          ${game.home.abbrev}
+          ${game.home.location}
           ${game.home.score}
         </span>
 
@@ -676,7 +683,6 @@ function streakHTML(
   `;
 
 }
-
 
 
 /* --------------------------------
@@ -781,6 +787,14 @@ function conferenceHTML(
             ${divisionName}
           </div>
 
+          <div class="standing-header">
+            <div>RK</div>
+            <div>TEAM</div>
+            <div class="header-right">RECORD</div>
+            <div class="header-right">PTS</div>
+            <div class="header-right">MOVE</div>
+          </div>
+
       `;
 
 
@@ -882,7 +896,6 @@ function standingRowHTML(
 }
 
 
-
 /* --------------------------------
    UPCOMING
 -------------------------------- */
@@ -951,9 +964,9 @@ function renderUpcoming(games) {
 
       <div class="upcoming-matchup">
 
-        ${game.away}
+        ${game.awayLocation}
         @
-        ${game.home}
+        ${game.homeLocation}
 
       </div>
 
@@ -975,7 +988,6 @@ function renderUpcoming(games) {
   });
 
 }
-
 
 
 loadDashboard();
