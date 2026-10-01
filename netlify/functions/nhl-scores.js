@@ -68,12 +68,10 @@ exports.handler = async function () {
     // HELPERS
     // ----------------------------------------------------
 
-    function getTeamLocation(standing, fallbackAbbrev) {
+    function getTeamName(standing, fallbackAbbrev) {
       if (!standing) return fallbackAbbrev;
 
       return (
-        standing.placeName?.default ||
-        standing.teamPlaceName?.default ||
         standing.teamCommonName?.default ||
         standing.teamName?.default ||
         fallbackAbbrev
@@ -259,14 +257,14 @@ exports.handler = async function () {
 
           away: {
             abbrev: awayAbbrev,
-            location: getTeamLocation(awayStanding, awayAbbrev),
+            name: getTeamName(awayStanding, awayAbbrev),
             score: game.awayTeam?.score ?? 0,
             streak: awayStreak
           },
 
           home: {
             abbrev: homeAbbrev,
-            location: getTeamLocation(homeStanding, homeAbbrev),
+            name: getTeamName(homeStanding, homeAbbrev),
             score: game.homeTeam?.score ?? 0,
             streak: homeStreak
           },
@@ -308,14 +306,8 @@ exports.handler = async function () {
         abbrev,
 
         name:
+          team.teamCommonName?.default ||
           team.teamName?.default ||
-          team.teamCommonName?.default ||
-          abbrev,
-
-        location:
-          team.placeName?.default ||
-          team.teamPlaceName?.default ||
-          team.teamCommonName?.default ||
           abbrev,
 
         conference:
@@ -372,15 +364,15 @@ exports.handler = async function () {
             startTimeUTC: game.startTimeUTC,
 
             away: awayAbbrev,
-            awayLocation:
-              getTeamLocation(
+            awayName:
+              getTeamName(
                 awayStanding,
                 awayAbbrev
               ),
 
             home: homeAbbrev,
-            homeLocation:
-              getTeamLocation(
+            homeName:
+              getTeamName(
                 homeStanding,
                 homeAbbrev
               )
