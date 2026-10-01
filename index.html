@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NHL in 5</title>
+
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: Arial, sans-serif;
       background: #0b1220;
@@ -14,7 +19,7 @@
     }
 
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
     }
 
@@ -23,28 +28,159 @@
       margin-bottom: 8px;
     }
 
-    p {
+    .subtitle {
       color: #b8c1d1;
       font-size: 18px;
+      margin-bottom: 30px;
     }
 
-    .card {
+    .section {
       background: #151f32;
       border-radius: 16px;
       padding: 24px;
-      margin-top: 28px;
+    }
+
+    .section h2 {
+      margin-top: 0;
+    }
+
+    .games {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .game {
+      background: #0f1728;
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .matchup {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .score {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .status {
+      color: #8fa0b8;
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    .loading,
+    .error {
+      color: #aab6c8;
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>NHL in 5</h1>
-    <p>Your quick daily NHL dashboard.</p>
 
-    <div class="card">
-      <h2>Yesterday's Games</h2>
-      <p>If you can see this, the site is working.</p>
+<body>
+
+  <div class="container">
+
+    <h1>NHL in 5</h1>
+    <div class="subtitle">
+      Your quick daily NHL dashboard.
     </div>
+
+    <div class="section">
+      <h2>Yesterday's Games</h2>
+
+      <div id="games" class="games">
+        <div class="loading">Loading NHL scores...</div>
+      </div>
+    </div>
+
   </div>
+
+  <script>
+    async function loadGames() {
+
+      const gamesContainer = document.getElementById("games");
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const date = yesterday.toISOString().split("T")[0];
+
+      const url =
+        `https://api-web.nhle.com/v1/score/${date}`;
+
+      try {
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error("Unable to load scores");
+        }
+
+        const data = await response.json();
+
+        gamesContainer.innerHTML = "";
+
+        if (!data.games || data.games.length === 0) {
+          gamesContainer.innerHTML =
+            "<div>No NHL games were played yesterday.</div>";
+          return;
+        }
+
+        data.games.forEach(game => {
+
+          const away = game.awayTeam;
+          const home = game.homeTeam;
+
+          const gameCard = document.createElement("div");
+
+          gameCard.className = "game";
+
+          const overtime =
+            game.gameOutcome?.lastPeriodType === "OT"
+              ? " • OT"
+              : game.gameOutcome?.lastPeriodType === "SO"
+              ? " • SO"
+              : "";
+
+          gameCard.innerHTML = `
+            <div>
+              <div class="matchup">
+                ${away.abbrev} @ ${home.abbrev}
+              </div>
+
+              <div class="status">
+                Final${overtime}
+              </div>
+            </div>
+
+            <div class="score">
+              ${away.score ?? "-"} — ${home.score ?? "-"}
+            </div>
+          `;
+
+          gamesContainer.appendChild(gameCard);
+
+        });
+
+      } catch (error) {
+
+        console.error(error);
+
+        gamesContainer.innerHTML =
+          '<div class="error">Could not load NHL scores.</div>';
+
+      }
+
+    }
+
+    loadGames();
+  </script>
+
 </body>
 </html>
