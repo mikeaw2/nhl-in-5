@@ -1,40 +1,327 @@
-exports.handler = async function (event) {
-  try {
-    const date = event.queryStringParameters?.date;
+const NHL_BASE = "https://api-web.nhle.com/v1";
 
-    if (!date) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Date is required" })
-      };
+exports.handler = async function () {
+  try {
+    const now = new Date();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+    const formatDate = (date) => date.toISOString().split("T")[0];
+
+    const yesterdayStr = formatDate(yesterday);
+    const twoDaysAgoStr = formatDate(twoDaysAgo);
+
+    async function getJSON(url) {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status} ${url}`);
+      }
+
+      return response.json();
     }
 
-    const response = await fetch(
-      `https://api-web.nhle.com/v1/score/${date}`
+    // Fetch the main datasets in parallel
+    const [
+      scores,
+      standingsNow,
+      standingsPrevious,
+      schedule
+    ] = await Promise.all([
+      getJSON(`${NHL_BASE}/score/${yesterdayStr}`),
+      getJSON(`${NHL_BASE}/standings/now`),
+      getJSON(`${NHL_BASE}/standings/${twoDaysAgoStr}`),
+      getJSON(`${NHL_BASE}/schedule/now`)
+    ]);
+
+    // ----------------------------------------------------
+    // STANDINGS LOOKUPS
+    // ----------------------------------------------------
+
+    const standingsByTeam = {};
+
+    for (const team of standingsNow.standings || []) {
+      const abbrev =
+        team.teamAbbrev?.default ||
+        team.teamAbbrev ||
+        "";
+
+      standingsByTeam[abbrev] = team;
+    }
+
+    const previousRanks = {};
+
+    for (const team of standingsPrevious.standings || []) {
+      const abbrev =
+        team.teamAbbrev?.default ||
+        team.teamAbbrev ||
+        "";
+
+      previousRanks[abbrev] =
+        team.leagueSequence ??
+        team.conferenceSequence ??
+        null;
+    }
+
+    // ----------------------------------------------------
+    // YESTERDAY'S GAMES
+    // ----------------------------------------------------
+
+    const completedGames = (scores.games || []).filter(game =>
+      ["FINAL", "OFF"].includes(game.gameState)
     );
 
-    if (!response.ok) {
+    const games = await Promise.all(
+      completedGames.map(async (game) => {
+        const awayAbbrev = game.awayTeam?.abbrev || "";
+        const homeAbbrev = game.homeTeam?.abbrev || "";
+
+        const awayStanding = standingsByTeam[awayAbbrev];
+        const homeStanding = standingsByTeam[homeAbbrev];
+
+        let topPerformer = null;
+
+        try {
+          const boxscore = await getJSON(
+            `${NHL_BASE}/gamecenter/${game.id}/boxscore`
+          );
+
+          const allPlayers = [];
+
+          function collectPlayers(teamStats, teamAbbrev) {
+            if (!teamStats) return;
+
+            const groups = [
+              ...(teamStats.forwards || []),
+              ...(teamStats.defense || [])
+            ];
+
+            for (const player of groups) {
+              const goals = player.goals ?? 0;
+              const assists = player.assists ?? 0;
+              const points = player.points ?? goals + assists;
+
+              allPlayers.push({
+                name:
+                  player.name?.default ||
+                  player.name ||
+                  player.firstName?.default && player.lastName?.default
+                    ? `${player.firstName?.default || ""} ${player.lastName?.default || ""}`.trim()
+                    : "Unknown",
+                team: teamAbbrev,
+                goals,
+                assists,
+                points
+              });
+            }
+          }
+
+          collectPlayers(
+            boxscore.playerByGameStats?.awayTeam,
+            awayAbbrev
+          );
+
+          collectPlayers(
+            boxscore.playerByGameStats?.homeTeam,
+            homeAbbrev
+          );
+
+          allPlayers.sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.goals !== a.goals) return b.goals - a.goals;
+            return b.assists - a.assists;
+          });
+
+          topPerformer = allPlayers[0] || null;
+
+        } catch (error) {
+          console.log(
+            `Could not load boxscore for ${game.id}`,
+            error.message
+          );
+        }
+
+        function streakInfo(standing) {
+          if (!standing) {
+            return {
+              code: "",
+              count: 0,
+              emoji: ""
+            };
+          }
+
+          const code =
+            standing.streakCode ||
+            standing.streak?.code ||
+            "";
+
+          const count =
+            standing.streakCount ||
+            standing.streak?.count ||
+            0;
+
+          const normalized = String(code).toUpperCase();
+
+          return {
+            code: normalized,
+            count,
+            emoji:
+              normalized.startsWith("W")
+                ? "🔥"
+                : normalized.startsWith("L")
+                ? "❄️"
+                : "•"
+          };
+        }
+
+        const awayStreak = streakInfo(awayStanding);
+        const homeStreak = streakInfo(homeStanding);
+
+        return {
+          id: game.id,
+
+          away: {
+            abbrev: awayAbbrev,
+            score: game.awayTeam?.score ?? 0,
+            streak: awayStreak
+          },
+
+          home: {
+            abbrev: homeAbbrev,
+            score: game.homeTeam?.score ?? 0,
+            streak: homeStreak
+          },
+
+          topPerformer,
+
+          periodType:
+            game.gameOutcome?.lastPeriodType || ""
+        };
+      })
+    );
+
+    // ----------------------------------------------------
+    // FULL STANDINGS
+    // ----------------------------------------------------
+
+    const standings = (standingsNow.standings || []).map(team => {
+      const abbrev =
+        team.teamAbbrev?.default ||
+        team.teamAbbrev ||
+        "";
+
+      const currentRank =
+        team.leagueSequence ??
+        team.conferenceSequence ??
+        null;
+
+      const oldRank = previousRanks[abbrev];
+
+      let movement = 0;
+
+      if (
+        typeof currentRank === "number" &&
+        typeof oldRank === "number"
+      ) {
+        movement = oldRank - currentRank;
+      }
+
       return {
-        statusCode: response.status,
-        body: JSON.stringify({ error: "NHL API request failed" })
+        abbrev,
+
+        name:
+          team.teamName?.default ||
+          team.teamCommonName?.default ||
+          abbrev,
+
+        conference:
+          team.conferenceName ||
+          "",
+
+        division:
+          team.divisionName ||
+          "",
+
+        wins: team.wins ?? 0,
+        losses: team.losses ?? 0,
+        otLosses: team.otLosses ?? 0,
+        points: team.points ?? 0,
+
+        conferenceRank:
+          team.conferenceSequence ?? null,
+
+        divisionRank:
+          team.divisionSequence ?? null,
+
+        leagueRank:
+          team.leagueSequence ?? null,
+
+        movement
       };
+    });
+
+    // ----------------------------------------------------
+    // UPCOMING GAMES
+    // ----------------------------------------------------
+
+    const upcoming = [];
+
+    for (const week of schedule.gameWeek || []) {
+      for (const game of week.games || []) {
+        if (
+          ["FUT", "PRE"].includes(game.gameState)
+        ) {
+          upcoming.push({
+            id: game.id,
+            startTimeUTC: game.startTimeUTC,
+
+            away:
+              game.awayTeam?.abbrev || "",
+
+            home:
+              game.homeTeam?.abbrev || ""
+          });
+        }
+      }
     }
 
-    const data = await response.json();
+    upcoming.sort(
+      (a, b) =>
+        new Date(a.startTimeUTC) -
+        new Date(b.startTimeUTC)
+    );
+
+    // Only show the next 8 scheduled games
+    const nextGames = upcoming.slice(0, 8);
 
     return {
       statusCode: 200,
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=300"
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        date: yesterdayStr,
+        games,
+        standings,
+        upcoming: nextGames
+      })
     };
 
   } catch (error) {
+    console.error(error);
+
     return {
       statusCode: 500,
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        error: "Something went wrong"
+        error: error.message || "Something went wrong"
       })
     };
   }
